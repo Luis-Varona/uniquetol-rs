@@ -1,5 +1,7 @@
 # uniquetol
 
+[![Build Status](https://github.com/Luis-Varona/uniquetol-rs/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/Luis-Varona/uniquetol-rs/actions/workflows/rust.yml?query=branch%3Amain)
+
 uniquetol is a Rust toolbox for isolating unique values in n-dimensional arrays
 of imprecise floating-point data within a given tolerance. In the
 one-dimensional case, it returns the largest subset in which no pairs of
