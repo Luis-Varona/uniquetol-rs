@@ -1,6 +1,9 @@
 [package]
 name = "uniquetol-rs"
 version = "0.1.0"
+authors = ["Luis M. B. Varona <lbvarona@mta.ca>"]
 edition = "2024"
+license = "MIT"
 
 [dependencies]
+ndarray = "0.16.1"
