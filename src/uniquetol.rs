@@ -1,8 +1,9 @@
 #[path = "isapprox.rs"] mod isapprox;
+#[path = "test_arr.rs"] mod test_arr;
 
 use isapprox::{Tols, isapprox};
 
-pub fn uniquetol(arr: &[f64], args: &UniqueTolArgs) -> UniqueTolArray {
+pub fn uniquetol(arr: &[f64], tols: &Tols, occurrence: &Occurrence) -> UniqueTolArray {
     let n = arr.len();
     
     if n == 0 {
@@ -13,11 +14,6 @@ pub fn uniquetol(arr: &[f64], args: &UniqueTolArgs) -> UniqueTolArray {
             counts_unique: Vec::new(),
         };
     }
-    
-    let tols = Tols {
-        atol: args.atol,
-        rtol: args.rtol,
-    };
     
     let mut perm_sorted: Vec<usize> = (0..n).collect();
     perm_sorted.sort_by(|&i, &j| arr[i].total_cmp(&arr[j]));
@@ -65,7 +61,7 @@ pub fn uniquetol(arr: &[f64], args: &UniqueTolArgs) -> UniqueTolArray {
     
     counts_unique.push(count_last);
     
-    if args.use_highest {
+    if *occurrence == Occurrence::Highest {
         for i in 0..(num_unique) {
             indices_unique[i] = perm_sorted[indices_unique[i]];
         }
@@ -94,18 +90,45 @@ pub struct UniqueTolArray {
     pub counts_unique: Vec<usize>,
 }
 
-pub struct UniqueTolArgs {
-    pub atol: f64,
-    pub rtol: f64,
-    pub use_highest: bool,
+#[derive(PartialEq)]
+pub enum Occurrence {
+    Lowest,
+    Highest,
 }
 
-impl Default for UniqueTolArgs {
-    fn default() -> UniqueTolArgs {
-        UniqueTolArgs {
-            atol: 1e-8,
-            rtol: (f64::EPSILON).sqrt(),
-            use_highest: true,
-        }
+impl Default for Occurrence {
+    fn default() -> Occurrence {
+        Occurrence::Lowest
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_arr::TEST_ARR;
+    
+    #[test]
+    fn test_uniquetol() {
+        let uniquetol_arr = uniquetol(
+            &TEST_ARR,
+            &Tols::default(),
+            &Occurrence::default());
+        
+        let n = TEST_ARR.len();
+        let k = uniquetol_arr.arr_unique.len();
+        assert_eq!(k, 179);
+        
+        println!("Length of the original input array: {}\n", n);
+        println!("Number of unique elements within tolerance: {}\n", k);
+        println!("Unique elements: {:?}\n", uniquetol_arr.arr_unique);
+        println!(
+            "Indices of the unique elements in the original array: {:?}\n",
+            uniquetol_arr.indices_unique
+        );
+        println!(
+            "Indices of the original elements in the unique array: {:?}\n",
+            uniquetol_arr.inverse_unique
+        );
+        println!("Counts of unique elements: {:?}\n", uniquetol_arr.counts_unique);
     }
 }
