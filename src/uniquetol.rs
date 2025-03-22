@@ -38,7 +38,8 @@ pub fn uniquetol(arr: &[f64], tols: &Tols, occurrence: &Occurrence) -> UniqueTol
     }
     
     let mut arr_unique: Vec<f64> = Vec::with_capacity(num_unique);
-    let mut inverse_unique: Vec<usize> = vec![0; n];
+    let mut inverse_unique: Vec<usize> = vec![0; n]; // (1)
+    // let mut inverse_unique: Vec<usize> = Vec::with_capacity(n); (1)
     let mut counts_unique: Vec<usize> = Vec::with_capacity(num_unique);
     
     indices_unique = indices_unique.into_boxed_slice().into_vec();
@@ -71,7 +72,7 @@ pub fn uniquetol(arr: &[f64], tols: &Tols, occurrence: &Occurrence) -> UniqueTol
     
     for i in 0..num_unique {
         let index = perm_sorted[indices_unique[i]];
-        arr_unique.push(arr_sorted[index]);
+        arr_unique.push(arr[index]);
         indices_unique[i] = index;
     }
     
