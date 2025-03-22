@@ -9,6 +9,20 @@ pub struct Tols {
     pub rtol: f64,
 }
 
+impl Tols {
+    pub fn new (atol: f64, rtol: f64) -> Result<Self, &'static str> {
+        if atol < 0.0 {
+            return Err("atol must be non-negative");
+        }
+        
+        if rtol < 0.0 {
+            return Err("rtol must be non-negative");
+        }
+        
+        Ok(Tols { atol, rtol })
+    }
+}
+
 impl Default for Tols {
     fn default() -> Tols {
         Tols {
