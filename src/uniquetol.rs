@@ -6,8 +6,8 @@ use isapprox::{Tols, isapprox};
 #[derive(Default, PartialEq)]
 pub enum Occurrence {
     #[default]
-    Highest,
     Lowest,
+    Highest,
 }
 
 pub struct UniqueTolArray {
@@ -17,10 +17,15 @@ pub struct UniqueTolArray {
     pub counts_unique: Vec<usize>,
 }
 
-fn sortperm(arr: &[f64]) -> Vec<usize> {
+fn sortperm(arr: &[f64], reverse: bool) -> Vec<usize> {
     let n = arr.len();
     let mut perm_sorted: Vec<usize> = (0..n).collect();
-    perm_sorted.sort_by(|&i, &j| arr[i].total_cmp(&arr[j]));
+    
+    match reverse {
+        false => perm_sorted.sort_by(|&i, &j| arr[i].total_cmp(&arr[j])),
+        true => perm_sorted.sort_by(|&i, &j| arr[j].total_cmp(&arr[i])),
+    }
+    
     perm_sorted
 }
 
@@ -36,59 +41,53 @@ pub fn uniquetol(arr: &[f64], tols: &Tols, occurrence: &Occurrence) -> UniqueTol
         };
     }
     
-    let perm_sorted: Vec<usize> = sortperm(arr);
-    let mut indices_unique: Vec<usize> = Vec::with_capacity(n);
-    let mut curr = arr[perm_sorted[0]];
+    let perm_sorted = match *occurrence {
+        Occurrence::Lowest => sortperm(arr, false),
+        Occurrence::Highest => sortperm(arr, true),
+    };
     
-    if *occurrence == Occurrence::Lowest {
-        indices_unique.push(0);
-    }
+    let mut indices_unique = Vec::with_capacity(n);
+    let mut inverse_unique = vec![0; n];
+    let mut counts_unique = Vec::with_capacity(n);
     
-    for i in 1..n {
-        let next = arr[perm_sorted[i]];
+    let mut idx_curr = 0;
+    let mut cnt_curr: usize = 1;
+    let mut val_curr = arr[perm_sorted[0]];
+    
+    for (i, &idx) in perm_sorted.iter().enumerate().skip(1) {
+        let val = arr[idx];
         
-        if !isapprox(curr, next, &tols) {
-            indices_unique.push(match *occurrence {
-                Occurrence::Lowest => i,
-                Occurrence::Highest => i - 1,
-            });
-            curr = next;
+        match isapprox(val_curr, val, tols) {
+            true => cnt_curr += 1,
+            false => {
+                indices_unique.push(perm_sorted[idx_curr]);
+                counts_unique.push(cnt_curr);
+                
+                for j in 0..cnt_curr {
+                    inverse_unique[perm_sorted[idx_curr + j]] = indices_unique.len() - 1;
+                }
+                
+                idx_curr = i;
+                cnt_curr = 1;
+                val_curr = val;
+            }
         }
     }
     
-    if *occurrence == Occurrence::Highest {
-        indices_unique.push(n - 1);
-    }
-    
+    indices_unique.push(idx_curr);
+    counts_unique.push(cnt_curr);
     indices_unique.shrink_to_fit();
+    counts_unique.shrink_to_fit();
     let num_unique = indices_unique.len();
+    
+    for j in 0..cnt_curr {
+        inverse_unique[perm_sorted[idx_curr + j]] = num_unique - 1;
+    }
+    
     let mut arr_unique: Vec<f64> = Vec::with_capacity(num_unique);
-    let mut inverse_unique: Vec<usize> = vec![0; n];
-    let mut counts_unique: Vec<usize> = Vec::with_capacity(num_unique);
     
-    let index_last = indices_unique[num_unique - 1];
-    let count_last = n - index_last;
-    
-    for j in 0..count_last {
-        inverse_unique[perm_sorted[index_last + j]] = num_unique - 1;
-    }
-    
-    for i in 0..(num_unique - 1) {
-        let index = indices_unique[i];
-        let count = indices_unique[i + 1] - index;
-        counts_unique.push(count);
-        
-        for j in 0..count {
-            inverse_unique[perm_sorted[index + j]] = i;
-        }
-    }
-    
-    counts_unique.push(count_last);
-    
-    for i in 0..num_unique {
-        let index = perm_sorted[indices_unique[i]];
-        arr_unique.push(arr[index]);
-        indices_unique[i] = index;
+    for &idx in indices_unique.iter() {
+        arr_unique.push(arr[idx]);
     }
     
     UniqueTolArray {
@@ -105,11 +104,39 @@ mod tests {
     use test_arr::TEST_ARR;
     
     #[test]
-    fn test_uniquetol() {
+    fn test_uniquetol_lowest() {
         let uniquetol_arr = uniquetol(
             &TEST_ARR,
             &Tols::default(),
-            &Occurrence::default());
+            &Occurrence::default(),
+        );
+        
+        let n = TEST_ARR.len();
+        let k = uniquetol_arr.arr_unique.len();
+        assert_eq!(n, 729);
+        assert_eq!(k, 179);
+        
+        println!("Length of the original input array: {}\n", n);
+        println!("Number of unique elements within tolerance: {}\n", k);
+        println!("Unique elements: {:?}\n", uniquetol_arr.arr_unique);
+        println!(
+            "Indices of the unique elements in the original array: {:?}\n",
+            uniquetol_arr.indices_unique
+        );
+        println!(
+            "Indices of the original elements in the unique array: {:?}\n",
+            uniquetol_arr.inverse_unique
+        );
+        println!("Counts of unique elements: {:?}\n", uniquetol_arr.counts_unique);
+    }
+    
+    #[test]
+    fn test_uniquetol_highest() {
+        let uniquetol_arr = uniquetol(
+            &TEST_ARR,
+            &Tols::default(),
+            &Occurrence::Highest,
+        );
         
         let n = TEST_ARR.len();
         let k = uniquetol_arr.arr_unique.len();
