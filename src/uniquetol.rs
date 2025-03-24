@@ -1,4 +1,5 @@
 #[path = "isapprox.rs"] mod isapprox;
+#[path = "test_arr.rs"] mod test_arr;
 
 use isapprox::{Tols, isapprox};
 
@@ -95,5 +96,37 @@ pub fn uniquetol(arr: &[f64], tols: &Tols, occurrence: &Occurrence) -> UniqueTol
         indices_unique,
         inverse_unique,
         counts_unique,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_arr::TEST_ARR;
+    
+    #[test]
+    fn test_uniquetol() {
+        let uniquetol_arr = uniquetol(
+            &TEST_ARR,
+            &Tols::default(),
+            &Occurrence::default());
+        
+        let n = TEST_ARR.len();
+        let k = uniquetol_arr.arr_unique.len();
+        assert_eq!(n, 729);
+        assert_eq!(k, 179);
+        
+        println!("Length of the original input array: {}\n", n);
+        println!("Number of unique elements within tolerance: {}\n", k);
+        println!("Unique elements: {:?}\n", uniquetol_arr.arr_unique);
+        println!(
+            "Indices of the unique elements in the original array: {:?}\n",
+            uniquetol_arr.indices_unique
+        );
+        println!(
+            "Indices of the original elements in the unique array: {:?}\n",
+            uniquetol_arr.inverse_unique
+        );
+        println!("Counts of unique elements: {:?}\n", uniquetol_arr.counts_unique);
     }
 }
