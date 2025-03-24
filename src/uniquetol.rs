@@ -1,0 +1,99 @@
+#[path = "isapprox.rs"] mod isapprox;
+
+use isapprox::{Tols, isapprox};
+
+#[derive(Default, PartialEq)]
+pub enum Occurrence {
+    #[default]
+    Highest,
+    Lowest,
+}
+
+pub struct UniqueTolArray {
+    pub arr_unique: Vec<f64>,
+    pub indices_unique: Vec<usize>,
+    pub inverse_unique: Vec<usize>,
+    pub counts_unique: Vec<usize>,
+}
+
+fn sortperm(arr: &[f64]) -> Vec<usize> {
+    let n = arr.len();
+    let mut perm_sorted: Vec<usize> = (0..n).collect();
+    perm_sorted.sort_by(|&i, &j| arr[i].total_cmp(&arr[j]));
+    perm_sorted
+}
+
+pub fn uniquetol(arr: &[f64], tols: &Tols, occurrence: &Occurrence) -> UniqueTolArray {
+    let n = arr.len();
+    
+    if n == 0 {
+        return UniqueTolArray {
+            arr_unique: Vec::new(),
+            indices_unique: Vec::new(),
+            inverse_unique: Vec::new(),
+            counts_unique: Vec::new(),
+        };
+    }
+    
+    let perm_sorted: Vec<usize> = sortperm(arr);
+    let mut indices_unique: Vec<usize> = Vec::with_capacity(n);
+    let mut curr = arr[perm_sorted[0]];
+    
+    if *occurrence == Occurrence::Lowest {
+        indices_unique.push(0);
+    }
+    
+    for i in 1..n {
+        let next = arr[perm_sorted[i]];
+        
+        if !isapprox(curr, next, &tols) {
+            indices_unique.push(match *occurrence {
+                Occurrence::Lowest => i,
+                Occurrence::Highest => i - 1,
+            });
+            curr = next;
+        }
+    }
+    
+    if *occurrence == Occurrence::Highest {
+        indices_unique.push(n - 1);
+    }
+    
+    indices_unique.shrink_to_fit();
+    let num_unique = indices_unique.len();
+    let mut arr_unique: Vec<f64> = Vec::with_capacity(num_unique);
+    let mut inverse_unique: Vec<usize> = vec![0; n];
+    let mut counts_unique: Vec<usize> = Vec::with_capacity(num_unique);
+    
+    let index_last = indices_unique[num_unique - 1];
+    let count_last = n - index_last;
+    
+    for j in 0..count_last {
+        inverse_unique[perm_sorted[index_last + j]] = num_unique - 1;
+    }
+    
+    for i in 0..(num_unique - 1) {
+        let index = indices_unique[i];
+        let count = indices_unique[i + 1] - index;
+        counts_unique.push(count);
+        
+        for j in 0..count {
+            inverse_unique[perm_sorted[index + j]] = i;
+        }
+    }
+    
+    counts_unique.push(count_last);
+    
+    for i in 0..num_unique {
+        let index = perm_sorted[indices_unique[i]];
+        arr_unique.push(arr[index]);
+        indices_unique[i] = index;
+    }
+    
+    UniqueTolArray {
+        arr_unique,
+        indices_unique,
+        inverse_unique,
+        counts_unique,
+    }
+}
