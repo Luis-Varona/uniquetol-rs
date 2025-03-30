@@ -6,5 +6,4 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-itertools = "0.14.0"
 ndarray = "0.16.1"

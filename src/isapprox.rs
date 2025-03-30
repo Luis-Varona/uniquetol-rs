@@ -1,3 +1,11 @@
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum EqualNan {
+    #[default]
+    Yes,
+    No,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Tols {
     pub atol: f64,
     pub rtol: f64,
@@ -22,12 +30,19 @@ impl Default for Tols {
 }
 
 #[inline]
-pub fn isapprox(x: f64, y: f64, tols: &Tols) -> bool {
+pub fn isapprox(x: f64, y: f64, tols: Tols, equal_nan: EqualNan) -> bool {
+    if x.is_nan() && y.is_nan() {
+        return match equal_nan {
+            EqualNan::Yes => true,
+            EqualNan::No => false,
+        };
+    }
+    
     if x.is_nan() || y.is_nan() {
         return false;
     }
     
     let max_val = f64::max(f64::abs(x), f64::abs(y));
-    let max_tol = f64::max(tols.atol, tols.rtol * max_val);
+    let max_tol = f64::max(tols.atol, tols.rtol * max_val).min(f64::MAX);
     f64::abs(x - y) <= max_tol
 }

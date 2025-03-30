@@ -1,7 +1,6 @@
 #[path = "isapprox.rs"] mod isapprox;
 #[path = "uniquetol.rs"] mod uniquetol;
 
-use itertools::Itertools;
 use ndarray::{Array, Axis, IxDyn};
 use crate::isapprox::{EqualNan, Tols, isapprox};
 use crate::uniquetol::{Occurrence, uniquetol};
@@ -27,54 +26,65 @@ impl Default for AxisFlatten {
     }
 }
 
+#[inline]
+fn sortperm(arr: &[f64]) -> Vec<usize> {
+    let mut perm_sorted: Vec<usize> = (0..arr.len()).collect();
+    perm_sorted.sort_by(|&i, &j| arr[i].total_cmp(&arr[j]));
+    perm_sorted
+}
+
+fn uniquetol_groups(arr: &[f64], tols: Tols, equal_nan: EqualNan) -> Vec<Vec<usize>> {
+    let perm_sorted = sortperm(arr);
+    let mut groups = vec![vec![perm_sorted[0]]];
+    let mut curr = arr[perm_sorted[0]];
+    
+    for &idx in perm_sorted.iter().skip(1) {
+        let next = arr[idx];
+        
+        match isapprox(curr, next, tols, equal_nan) {
+            true => groups.last_mut().unwrap().push(idx),
+            false => {
+                groups.push(vec![idx]);
+                curr = next;
+            }
+        }
+    }
+    
+    groups
+}
+
 pub fn uniquetol_ndarray(
     arr: &Array<f64, IxDyn>,
     tols: Tols,
     equal_nan: EqualNan,
-    occurrence: Occurrence,
     axis_flatten: AxisFlatten,
 ) -> Array<f64, IxDyn> {
     let axis = match axis_flatten {
         AxisFlatten::Dim(None) => {
             let arr_flat = arr.flatten().to_vec();
-            let arr_unique = uniquetol(&arr_flat, tols, equal_nan, occurrence).arr_unique;
+            let arr_unique = uniquetol(
+                &arr_flat, tols, equal_nan, Occurrence::default()
+            ).arr_unique;
             return Array::from_shape_vec(IxDyn(&[arr_unique.len()]), arr_unique).unwrap();
         }
         AxisFlatten::Dim(Some(axis)) => axis,
     };
     
     let arrs_flat = arr.axis_iter(Axis(axis)).collect::<Vec<_>>();
+    let n = arrs_flat[0].len();
+    let mut groups: Vec<Vec<usize>>  = vec![(0..n).collect()];
     
-    // find largest subset s.t. no pair of (array) elements is element-wise approx. equal ...
-    // the following is a very naive placeholder implementation while I think of a better one
-    let mut k = arrs_flat.len();
-    
-    loop {
-        let mut independent = true;
+    for idx in 0..n {
+        let mut groups_new = Vec::new();
         
-        for subset in Itertools::combinations(arrs_flat.iter(), k) {
-            let mut i = 0;
-            
-            while independent && i < k - 1 {
-                let mut j = i + 1;
-                
-                while independent && j < k {
-                    let arr_i = subset[i];
-                    let arr_j = subset[j];
-                    independent = !arr_i.iter().zip(arr_j.iter()).all(|(&x, &y)| isapprox(x, y, tols, equal_nan));
-                    j += 1;
-                }
-                
-                i += 1;
-            }
-            
-            if independent {
-                let arr_flat = subset.iter().flat_map(|arr| arr.iter()).copied().collect::<Vec<_>>();
-                let arr_unique = uniquetol(&arr_flat, tols, equal_nan, occurrence).arr_unique;
-                return Array::from_shape_vec(IxDyn(&[arr_unique.len()]), arr_unique).unwrap();
-            }
+        for group in groups.iter() {
+            let arr: Vec<f64> = group.iter().map(|&i| arrs_flat[i][idx]).collect();
+            groups_new.extend(uniquetol_groups(&arr, tols, equal_nan));
         }
         
-        k -= 1;
+        groups = groups_new;
     }
+    
+    let arr_unique: Vec<f64> = groups.iter().map(|group| arr[group[0]]).collect();
+    Array::from_shape_vec(IxDyn(&[arr_unique.len()]), arr_unique).unwrap()
 }
