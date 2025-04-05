@@ -5,25 +5,11 @@ use ndarray::{Array, Axis, IxDyn};
 use crate::isapprox::{EqualNan, Tols, isapprox};
 use crate::uniquetol::{Occurrence, uniquetol};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AxisFlatten {
-    Dim(Option<usize>),
-}
-
-impl AxisFlatten {
-    pub fn new(dim: Option<usize>, d: usize) -> Result<Self, String> {
-        match dim {
-            None => Ok(AxisFlatten::Dim(None)),
-            Some(axis) if axis < d => Ok(AxisFlatten::Dim(Some(axis))),
-            Some(_) => Err(format!("Dim axis must be between 0 and {} (inclusive)", d - 1)),
-        }
-    }
-}
-
-impl Default for AxisFlatten {
-    fn default() -> Self {
-        AxisFlatten::Dim(None)
-    }
+    #[default]
+    None,
+    Dim(usize),
 }
 
 #[inline]
@@ -60,14 +46,17 @@ pub fn uniquetol_ndarray(
     axis_flatten: AxisFlatten,
 ) -> Array<f64, IxDyn> {
     let axis = match axis_flatten {
-        AxisFlatten::Dim(None) => {
+        AxisFlatten::None => {
             let arr_flat = arr.flatten().to_vec();
             let arr_unique = uniquetol(
                 &arr_flat, tols, equal_nan, Occurrence::default()
             ).arr_unique;
             return Array::from_shape_vec(IxDyn(&[arr_unique.len()]), arr_unique).unwrap();
         }
-        AxisFlatten::Dim(Some(axis)) => axis,
+        AxisFlatten::Dim(axis) if axis < arr.ndim() => axis,
+        AxisFlatten::Dim(axis) => {
+            panic!("Axis {} out of bounds for array of dimension {}", axis, arr.ndim());
+        }
     };
     
     let arrs_flat = arr.axis_iter(Axis(axis)).collect::<Vec<_>>();

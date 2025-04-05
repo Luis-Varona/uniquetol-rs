@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EqualNan {
     #[default]
     Yes,

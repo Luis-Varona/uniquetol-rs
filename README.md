@@ -1,4 +1,4 @@
-# uniquetol
+# uniquetol-rs
 
 [![Build Status](https://github.com/Luis-Varona/uniquetol-rs/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/Luis-Varona/uniquetol-rs/actions/workflows/rust.yml?query=branch%3Amain)
 
