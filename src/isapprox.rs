@@ -5,6 +5,23 @@ pub enum EqualNan {
     No,
 }
 
+#[derive(Debug)]
+pub enum TolsError {
+    NegativeAtol,
+    NegativeRtol,
+}
+
+impl std::fmt::Display for TolsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TolsError::NegativeAtol => write!(f, "atol must be non-negative"),
+            TolsError::NegativeRtol => write!(f, "rtol must be non-negative"),
+        }
+    }
+}
+
+impl std::error::Error for TolsError {}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Tols {
     pub atol: f64,
@@ -12,11 +29,11 @@ pub struct Tols {
 }
 
 impl Tols {
-    pub fn new (atol: f64, rtol: f64) -> Result<Self, &'static str> {
+    pub fn new (atol: f64, rtol: f64) -> Result<Self, TolsError> {
         if atol < 0.0 {
-            Err("atol must be non-negative")
+            Err(TolsError::NegativeAtol)
         } else if rtol < 0.0 {
-            Err("rtol must be non-negative")
+            Err(TolsError::NegativeRtol)
         } else {
             Ok(Tols { atol, rtol })
         }
