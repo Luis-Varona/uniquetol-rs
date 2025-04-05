@@ -1,5 +1,5 @@
 [package]
-name = "uniquetol-rs"
+name = "uniquetol"
 version = "0.1.0-dev"
 authors = ["Luis M. B. Varona <lbvarona@mta.ca>"]
 edition = "2024"

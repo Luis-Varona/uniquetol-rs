@@ -3,7 +3,7 @@
 
 use crate::isapprox::{EqualNan, Tols, isapprox};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Occurrence {
     #[default]
     Lowest,
