@@ -1,6 +1,6 @@
 [package]
 name = "uniquetol"
-version = "0.1.0-beta"
+version = "0.1.1-beta"
 authors = ["Luis M. B. Varona <lbvarona@mta.ca>"]
 edition = "2024"
 description = "A Rust toolbox for isolating unique values in n-dimensional arrays of imprecise floating-point data within a given tolerance."
