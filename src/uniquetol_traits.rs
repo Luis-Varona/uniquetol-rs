@@ -23,6 +23,7 @@ pub trait UniqueTolND {
         &self,
         tols: Tols,
         equal_nan: EqualNan,
+        occurrence: Occurrence,
         flatten_axis: FlattenAxis,
     ) -> Array<f64, IxDyn>;
 }
@@ -37,9 +38,16 @@ where
         &self,
         tols: Tols,
         equal_nan: EqualNan,
+        occurrence: Occurrence,
         flatten_axis: FlattenAxis,
     ) -> Array<f64, IxDyn> {
-        uniquetol_nd(&self.mapv(|x| x).into_dyn(), tols, equal_nan, flatten_axis)
-            .expect("Failed to compute unique values")
+        uniquetol_nd(
+            &self.mapv(|x| x).into_dyn(),
+            tols,
+            equal_nan,
+            occurrence,
+            flatten_axis,
+        )
+        .expect("Failed to compute unique values")
     }
 }
