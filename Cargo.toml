@@ -1,9 +1,11 @@
 [package]
 name = "uniquetol"
-version = "0.1.0-dev"
+version = "0.1.0-beta"
 authors = ["Luis M. B. Varona <lbvarona@mta.ca>"]
 edition = "2024"
+description = "A Rust toolbox for isolating unique values in n-dimensional arrays of imprecise floating-point data within a given tolerance."
 license = "MIT"
+repository = "https://github.com/Luis-Varona/uniquetol-rs"
 
 [dependencies]
 ndarray = "0.16.1"
