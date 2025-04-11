@@ -1,6 +1,6 @@
 use ndarray::{Array, Axis, IxDyn};
 
-use crate::isapprox::{EqualNan, Tols, isapprox};
+use crate::isapprox::{NanComparison, Tols, isapprox};
 use crate::uniquetol_1d::{Occurrence, sortperm, uniquetol_1d};
 
 const SHAPE_ERR: &str = "Failed to reshape vector to ndarray";
@@ -35,7 +35,7 @@ fn uniquetol_groups(
     group: &[usize],
     arr: &[f64],
     tols: Tols,
-    equal_nan: EqualNan,
+    nan_cmp: NanComparison,
 ) -> Vec<Vec<usize>> {
     let perm_sorted = sortperm(arr, false);
     let mut groups = vec![vec![group[perm_sorted[0]]]];
@@ -44,7 +44,7 @@ fn uniquetol_groups(
     for &idx in perm_sorted.iter().skip(1) {
         let next = arr[idx];
 
-        match isapprox(curr, next, tols, equal_nan) {
+        match isapprox(curr, next, tols, nan_cmp) {
             true => groups.last_mut().unwrap().push(group[idx]),
             false => {
                 groups.push(vec![group[idx]]);
@@ -60,11 +60,11 @@ fn uniquetol_groups(
 fn uniquetol_nd_flatten_none(
     arr: &Array<f64, IxDyn>,
     tols: Tols,
-    equal_nan: EqualNan,
+    nan_cmp: NanComparison,
     occurrence: Occurrence,
 ) -> Array<f64, IxDyn> {
     let arr_flat = arr.as_slice().expect(CONTIG_ERR);
-    let arr_unique = uniquetol_1d(arr_flat, tols, equal_nan, occurrence).arr_unique;
+    let arr_unique = uniquetol_1d(arr_flat, tols, nan_cmp, occurrence).arr_unique;
     let shape = IxDyn(&[arr_unique.len()]);
     Array::from_shape_vec(shape, arr_unique).expect(SHAPE_ERR)
 }
@@ -72,7 +72,7 @@ fn uniquetol_nd_flatten_none(
 fn uniquetol_nd_flatten_axis(
     arr: &Array<f64, IxDyn>,
     tols: Tols,
-    equal_nan: EqualNan,
+    nan_cmp: NanComparison,
     occurrence: Occurrence,
     axis: usize,
 ) -> Array<f64, IxDyn> {
@@ -93,7 +93,7 @@ fn uniquetol_nd_flatten_axis(
         for group in groups.iter() {
             sub_arr.clear();
             sub_arr.extend(group.iter().map(|&i| arr_flat[i * n + idx]));
-            groups_new.extend(uniquetol_groups(group, &sub_arr, tols, equal_nan));
+            groups_new.extend(uniquetol_groups(group, &sub_arr, tols, nan_cmp));
         }
 
         std::mem::swap(&mut groups, &mut groups_new);
@@ -112,14 +112,14 @@ fn uniquetol_nd_flatten_axis(
 pub fn uniquetol_nd(
     arr: &Array<f64, IxDyn>,
     tols: Tols,
-    equal_nan: EqualNan,
+    nan_cmp: NanComparison,
     occurrence: Occurrence,
     flatten_axis: FlattenAxis,
 ) -> Result<Array<f64, IxDyn>, BoundsError> {
     match flatten_axis {
-        FlattenAxis::None => Ok(uniquetol_nd_flatten_none(arr, tols, equal_nan, occurrence)),
+        FlattenAxis::None => Ok(uniquetol_nd_flatten_none(arr, tols, nan_cmp, occurrence)),
         FlattenAxis::Dim(axis) if axis < arr.ndim() => Ok(uniquetol_nd_flatten_axis(
-            arr, tols, equal_nan, occurrence, axis,
+            arr, tols, nan_cmp, occurrence, axis,
         )),
         FlattenAxis::Dim(axis) => Err(BoundsError {
             axis,
@@ -188,7 +188,7 @@ mod tests {
                 atol: 1e-5,
                 rtol: 1e-2,
             },
-            EqualNan::default(),
+            NanComparison::default(),
             Occurrence::default(),
             FlattenAxis::None,
         )
@@ -206,7 +206,7 @@ mod tests {
                 atol: 1e-5,
                 rtol: 1e-2,
             },
-            EqualNan::default(),
+            NanComparison::default(),
             Occurrence::default(),
             FlattenAxis::Dim(0),
         )
@@ -227,7 +227,7 @@ mod tests {
                 atol: 1e-5,
                 rtol: 1e-2,
             },
-            EqualNan::default(),
+            NanComparison::default(),
             Occurrence::default(),
             FlattenAxis::Dim(1),
         )
@@ -250,7 +250,7 @@ mod tests {
                 atol: 1e-5,
                 rtol: 1e-2,
             },
-            EqualNan::default(),
+            NanComparison::default(),
             Occurrence::Highest,
             FlattenAxis::None,
         )
@@ -270,7 +270,7 @@ mod tests {
                 atol: 1e-5,
                 rtol: 1e-2,
             },
-            EqualNan::default(),
+            NanComparison::default(),
             Occurrence::Highest,
             FlattenAxis::Dim(0),
         )
@@ -289,7 +289,7 @@ mod tests {
                 atol: 1e-5,
                 rtol: 1e-2,
             },
-            EqualNan::default(),
+            NanComparison::default(),
             Occurrence::Highest,
             FlattenAxis::Dim(1),
         )
@@ -308,7 +308,7 @@ mod tests {
                 atol: 1e-5,
                 rtol: 1e-2,
             },
-            EqualNan::default(),
+            NanComparison::default(),
             Occurrence::Highest,
             FlattenAxis::Dim(2),
         )

@@ -1,7 +1,7 @@
 #[path = "test_arr.rs"]
 mod test_arr;
 
-use crate::isapprox::{EqualNan, Tols, isapprox};
+use crate::isapprox::{NanComparison, Tols, isapprox};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Occurrence {
@@ -53,7 +53,7 @@ pub fn sortperm(arr: &[f64], reverse: bool) -> Vec<usize> {
 pub fn uniquetol_1d(
     arr: &[f64],
     tols: Tols,
-    equal_nan: EqualNan,
+    nan_cmp: NanComparison,
     occurrence: Occurrence,
 ) -> UniqueTolArray {
     let n = arr.len();
@@ -83,7 +83,7 @@ pub fn uniquetol_1d(
     for (i, &idx) in perm_sorted.iter().enumerate().skip(1) {
         let val = arr[idx];
 
-        match isapprox(val_curr, val, tols, equal_nan) {
+        match isapprox(val_curr, val, tols, nan_cmp) {
             true => cnt_curr += 1,
             false => {
                 indices_unique.push(perm_sorted[idx_curr]);
@@ -134,9 +134,9 @@ mod tests {
         let k: usize = 179;
 
         let tols = Tols::default();
-        let equal_nan = EqualNan::default();
+        let nan_cmp = NanComparison::default();
 
-        let uniquetol_arr = uniquetol_1d(&TEST_ARR, tols, equal_nan, occurrence);
+        let uniquetol_arr = uniquetol_1d(&TEST_ARR, tols, nan_cmp, occurrence);
 
         assert_eq!(uniquetol_arr.get_len_unique(), k);
         assert_eq!(uniquetol_arr.get_len_original(), n);
@@ -150,14 +150,14 @@ mod tests {
 
         let is_unique = arr_unique
             .windows(2)
-            .all(|w| !isapprox(w[0], w[1], tols, equal_nan));
+            .all(|w| !isapprox(w[0], w[1], tols, nan_cmp));
         assert!(is_unique);
 
         let mapped_correctly = uniquetol_arr
             .indices_unique
             .iter()
             .zip(arr_unique.iter())
-            .all(|(&idx, &x)| isapprox(TEST_ARR[idx], x, tols, equal_nan));
+            .all(|(&idx, &x)| isapprox(TEST_ARR[idx], x, tols, nan_cmp));
         assert!(mapped_correctly);
 
         let arr_remapped = uniquetol_arr.remap_to_original();
@@ -165,7 +165,7 @@ mod tests {
             && TEST_ARR
                 .iter()
                 .zip(arr_remapped.iter())
-                .all(|(&x, &y)| isapprox(x, y, tols, equal_nan));
+                .all(|(&x, &y)| isapprox(x, y, tols, nan_cmp));
         assert!(remapped_correctly);
     }
 
