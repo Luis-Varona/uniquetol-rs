@@ -1,10 +1,12 @@
 use ndarray::{Array, Axis, IxDyn};
+use num_traits::Float;
+use std::fmt::{Debug, Display};
 
 use crate::isapprox::{NanComparison, Tols, isapprox};
 use crate::uniquetol_1d::{Occurrence, sortperm, uniquetol_1d};
 
-const SHAPE_ERR: &str = "Failed to reshape vector to ndarray";
-const CONTIG_ERR: &str = "Array is not contiguous";
+const SHAPE_ERR_MSG: &str = "Failed to reshape vector to ndarray";
+const CONTIG_ERR_MSG: &str = "Array is not contiguous";
 
 #[derive(Debug)]
 pub struct BoundsError {
@@ -12,7 +14,7 @@ pub struct BoundsError {
     pub ndim: usize,
 }
 
-impl std::fmt::Display for BoundsError {
+impl Display for BoundsError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -31,12 +33,15 @@ pub enum FlattenAxis {
     Dim(usize),
 }
 
-fn uniquetol_groups(
+fn uniquetol_groups<F>(
     group: &[usize],
-    arr: &[f64],
-    tols: Tols,
+    arr: &[F],
+    tols: Tols<F>,
     nan_cmp: NanComparison,
-) -> Vec<Vec<usize>> {
+) -> Vec<Vec<usize>>
+where
+    F: Float + Display + Debug,
+{
     let perm_sorted = sortperm(arr, false);
     let mut groups = vec![vec![group[perm_sorted[0]]]];
     let mut curr = arr[perm_sorted[0]];
@@ -57,26 +62,32 @@ fn uniquetol_groups(
 }
 
 #[inline]
-fn uniquetol_nd_flatten_none(
-    arr: &Array<f64, IxDyn>,
-    tols: Tols,
+fn uniquetol_nd_flatten_none<F>(
+    arr: &Array<F, IxDyn>,
+    tols: Tols<F>,
     nan_cmp: NanComparison,
     occurrence: Occurrence,
-) -> Array<f64, IxDyn> {
-    let arr_flat = arr.as_slice().expect(CONTIG_ERR);
+) -> Array<F, IxDyn>
+where
+    F: Float + Display + Debug,
+{
+    let arr_flat = arr.as_slice().expect(CONTIG_ERR_MSG);
     let arr_unique = uniquetol_1d(arr_flat, tols, nan_cmp, occurrence).arr_unique;
     let shape = IxDyn(&[arr_unique.len()]);
-    Array::from_shape_vec(shape, arr_unique).expect(SHAPE_ERR)
+    Array::from_shape_vec(shape, arr_unique).expect(SHAPE_ERR_MSG)
 }
 
-fn uniquetol_nd_flatten_axis(
-    arr: &Array<f64, IxDyn>,
-    tols: Tols,
+fn uniquetol_nd_flatten_axis<F>(
+    arr: &Array<F, IxDyn>,
+    tols: Tols<F>,
     nan_cmp: NanComparison,
     occurrence: Occurrence,
     axis: usize,
-) -> Array<f64, IxDyn> {
-    let arr_flat: Vec<f64> = arr
+) -> Array<F, IxDyn>
+where
+    F: Float + Display + Debug,
+{
+    let arr_flat: Vec<F> = arr
         .axis_iter(Axis(axis))
         .flat_map(|slice| slice.to_owned())
         .collect();
@@ -109,13 +120,16 @@ fn uniquetol_nd_flatten_axis(
     arr.select(Axis(axis), &indices_unique)
 }
 
-pub fn uniquetol_nd(
-    arr: &Array<f64, IxDyn>,
-    tols: Tols,
+pub fn uniquetol_nd<F>(
+    arr: &Array<F, IxDyn>,
+    tols: Tols<F>,
     nan_cmp: NanComparison,
     occurrence: Occurrence,
     flatten_axis: FlattenAxis,
-) -> Result<Array<f64, IxDyn>, BoundsError> {
+) -> Result<Array<F, IxDyn>, BoundsError>
+where
+    F: Float + Display + Debug,
+{
     match flatten_axis {
         FlattenAxis::None => Ok(uniquetol_nd_flatten_none(arr, tols, nan_cmp, occurrence)),
         FlattenAxis::Dim(axis) if axis < arr.ndim() => Ok(uniquetol_nd_flatten_axis(
@@ -165,7 +179,7 @@ mod tests {
                 .flat_map(|slice| slice.iter().copied())
                 .collect(),
         )
-        .expect(SHAPE_ERR)
+        .expect(SHAPE_ERR_MSG)
     }
 
     fn arr_3d() -> Array3<f64> {
@@ -176,7 +190,7 @@ mod tests {
                 .flat_map(|slice| slice.iter().flat_map(|sub_slice| sub_slice.iter().copied()))
                 .collect(),
         )
-        .expect(SHAPE_ERR)
+        .expect(SHAPE_ERR_MSG)
     }
 
     #[test]

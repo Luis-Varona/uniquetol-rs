@@ -1,56 +1,68 @@
 use ndarray::{Array, ArrayBase, Data, Dimension, IxDyn};
+use num_traits::Float;
+use std::fmt::{Debug, Display};
 
 use crate::isapprox::{NanComparison, Tols};
-use crate::uniquetol_1d::{Occurrence, UniqueTolArray, uniquetol_1d};
+use crate::uniquetol_1d::{Occurrence, UniqueTolResult, uniquetol_1d};
 use crate::uniquetol_nd::{FlattenAxis, uniquetol_nd};
 
-pub trait UniqueTol1D {
+const UNIQUETOL_ERR_MSG: &str = "Failed to compute unique values";
+
+pub trait UniqueTol1D<F>
+where
+    F: Float + Display + Debug,
+{
     fn uniquetol(
         &self,
-        tols: Tols,
+        tols: Tols<F>,
         nan_cmp: NanComparison,
         occurrence: Occurrence,
-    ) -> UniqueTolArray;
+    ) -> UniqueTolResult<F>;
 }
 
-impl<T> UniqueTol1D for T
+impl<A, F> UniqueTol1D<F> for A
 where
-    T: AsRef<[f64]>,
+    A: AsRef<[F]>,
+    F: Float + Display + Debug,
 {
     #[inline]
     fn uniquetol(
         &self,
-        tols: Tols,
+        tols: Tols<F>,
         nan_cmp: NanComparison,
         occurrence: Occurrence,
-    ) -> UniqueTolArray {
-        uniquetol_1d(self.as_ref(), tols, nan_cmp, occurrence)
+    ) -> UniqueTolResult<F> {
+        uniquetol_1d(self, tols, nan_cmp, occurrence)
     }
 }
 
-pub trait UniqueTolND {
+pub trait UniqueTolND<F>
+where
+    F: Float + Display + Debug,
+{
     fn uniquetol(
         &self,
-        tols: Tols,
+        tols: Tols<F>,
         nan_cmp: NanComparison,
         occurrence: Occurrence,
         flatten_axis: FlattenAxis,
-    ) -> Array<f64, IxDyn>;
+    ) -> Array<F, IxDyn>;
 }
 
-impl<S, D> UniqueTolND for &ArrayBase<S, D>
+impl<T, D, F> UniqueTolND<F> for &ArrayBase<T, D>
 where
-    S: Data<Elem = f64>,
+    T: Data<Elem = F>,
+    F: Float + Display + Debug,
     D: Dimension,
 {
     #[inline]
     fn uniquetol(
         &self,
-        tols: Tols,
+        tols: Tols<F>,
         nan_cmp: NanComparison,
         occurrence: Occurrence,
         flatten_axis: FlattenAxis,
-    ) -> Array<f64, IxDyn> {
+    ) -> Array<F, IxDyn> {
         uniquetol_nd(
             &self.mapv(|x| x).into_dyn(),
             tols,
@@ -58,6 +70,6 @@ where
             occurrence,
             flatten_axis,
         )
-        .expect("Failed to compute unique values") // TODO: Make error message a const
+        .expect(UNIQUETOL_ERR_MSG)
     }
 }

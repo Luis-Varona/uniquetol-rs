@@ -1,6 +1,9 @@
 #[path = "test_arr.rs"]
 mod test_arr;
 
+use num_traits::Float;
+use std::fmt::{Debug, Display};
+
 use crate::isapprox::{NanComparison, Tols, isapprox};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -11,16 +14,22 @@ pub enum Occurrence {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct UniqueTolArray {
-    pub arr_unique: Vec<f64>,
+pub struct UniqueTolResult<F>
+where
+    F: Float + Display + Debug,
+{
+    pub arr_unique: Vec<F>,
     pub indices_unique: Vec<usize>,
     pub inverse_unique: Vec<usize>,
     pub counts_unique: Vec<usize>,
 }
 
-impl UniqueTolArray {
+impl<F> UniqueTolResult<F>
+where
+    F: Float + Display + Debug,
+{
     #[inline]
-    pub fn remap_to_original(&self) -> Vec<f64> {
+    pub fn remap_to_original(&self) -> Vec<F> {
         self.inverse_unique
             .iter()
             .map(|&idx| self.arr_unique[idx])
@@ -38,28 +47,43 @@ impl UniqueTolArray {
     }
 }
 
-pub fn sortperm(arr: &[f64], reverse: bool) -> Vec<usize> {
-    let n = arr.len();
-    let mut perm_sorted: Vec<usize> = (0..n).collect();
+pub fn sortperm<F>(arr: &[F], reverse: bool) -> Vec<usize>
+where
+    F: Float + Display + Debug,
+{
+    let mut perm: Vec<usize> = (0..arr.len()).collect();
 
     match reverse {
-        false => perm_sorted.sort_by(|&i, &j| arr[i].total_cmp(&arr[j])),
-        true => perm_sorted.sort_by(|&i, &j| arr[j].total_cmp(&arr[i])),
+        false => perm.sort_by(|&i, &j| {
+            arr[i]
+                .partial_cmp(&arr[j])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }),
+        true => perm.sort_by(|&i, &j| {
+            arr[j]
+                .partial_cmp(&arr[i])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }),
     }
 
-    perm_sorted
+    perm
 }
 
-pub fn uniquetol_1d(
-    arr: &[f64],
-    tols: Tols,
+pub fn uniquetol_1d<A, F>(
+    arr: A,
+    tols: Tols<F>,
     nan_cmp: NanComparison,
     occurrence: Occurrence,
-) -> UniqueTolArray {
+) -> UniqueTolResult<F>
+where
+    A: AsRef<[F]>,
+    F: Float + Display + Debug,
+{
+    let arr = arr.as_ref();
     let n = arr.len();
 
     if n == 0 {
-        return UniqueTolArray {
+        return UniqueTolResult {
             arr_unique: Vec::new(),
             indices_unique: Vec::new(),
             inverse_unique: Vec::new(),
@@ -83,40 +107,32 @@ pub fn uniquetol_1d(
     for (i, &idx) in perm_sorted.iter().enumerate().skip(1) {
         let val = arr[idx];
 
-        match isapprox(val_curr, val, tols, nan_cmp) {
-            true => cnt_curr += 1,
-            false => {
-                indices_unique.push(perm_sorted[idx_curr]);
-                counts_unique.push(cnt_curr);
+        if isapprox(val_curr, val, tols, nan_cmp) {
+            cnt_curr += 1;
+        } else {
+            indices_unique.push(perm_sorted[idx_curr]);
+            counts_unique.push(cnt_curr);
 
-                for j in 0..cnt_curr {
-                    inverse_unique[perm_sorted[idx_curr + j]] = indices_unique.len() - 1;
-                }
-
-                idx_curr = i;
-                cnt_curr = 1;
-                val_curr = val;
+            for j in 0..cnt_curr {
+                inverse_unique[perm_sorted[idx_curr + j]] = indices_unique.len() - 1;
             }
+
+            idx_curr = i;
+            cnt_curr = 1;
+            val_curr = val;
         }
     }
 
     indices_unique.push(perm_sorted[idx_curr]);
     counts_unique.push(cnt_curr);
-    indices_unique.shrink_to_fit();
-    counts_unique.shrink_to_fit();
-    let num_unique = indices_unique.len();
 
     for j in 0..cnt_curr {
-        inverse_unique[perm_sorted[idx_curr + j]] = num_unique - 1;
+        inverse_unique[perm_sorted[idx_curr + j]] = indices_unique.len() - 1;
     }
 
-    let mut arr_unique: Vec<f64> = Vec::with_capacity(num_unique);
+    let arr_unique = indices_unique.iter().map(|&i| arr[i]).collect();
 
-    for &idx in indices_unique.iter() {
-        arr_unique.push(arr[idx]);
-    }
-
-    UniqueTolArray {
+    UniqueTolResult {
         arr_unique,
         indices_unique,
         inverse_unique,
