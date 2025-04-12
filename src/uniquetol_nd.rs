@@ -9,12 +9,12 @@ const SHAPE_ERR_MSG: &str = "Failed to reshape vector to ndarray";
 const CONTIG_ERR_MSG: &str = "Array is not contiguous";
 
 #[derive(Debug)]
-pub struct BoundsError {
+pub struct AxisBoundsError {
     pub axis: usize,
     pub ndim: usize,
 }
 
-impl Display for BoundsError {
+impl Display for AxisBoundsError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -24,7 +24,7 @@ impl Display for BoundsError {
     }
 }
 
-impl std::error::Error for BoundsError {}
+impl std::error::Error for AxisBoundsError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FlattenAxis {
@@ -50,6 +50,7 @@ where
         let next = arr[idx];
 
         match isapprox(curr, next, tols, nan_cmp) {
+            // Safe to unwrap: groups is always initialized with one element
             true => groups.last_mut().unwrap().push(group[idx]),
             false => {
                 groups.push(vec![group[idx]]);
@@ -126,7 +127,7 @@ pub fn uniquetol_nd<F>(
     nan_cmp: NanComparison,
     occurrence: Occurrence,
     flatten_axis: FlattenAxis,
-) -> Result<Array<F, IxDyn>, BoundsError>
+) -> Result<Array<F, IxDyn>, AxisBoundsError>
 where
     F: Float + Display + Debug,
 {
@@ -135,7 +136,7 @@ where
         FlattenAxis::Dim(axis) if axis < arr.ndim() => Ok(uniquetol_nd_flatten_axis(
             arr, tols, nan_cmp, occurrence, axis,
         )),
-        FlattenAxis::Dim(axis) => Err(BoundsError {
+        FlattenAxis::Dim(axis) => Err(AxisBoundsError {
             axis,
             ndim: arr.ndim(),
         }),
