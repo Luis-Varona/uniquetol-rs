@@ -86,4 +86,5 @@ name = "uniquetol"
 version = "0.1.2-beta"
 dependencies = [
  "ndarray",
+ "num-traits",
 ]

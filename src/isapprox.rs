@@ -1,3 +1,10 @@
+use num_traits::Float;
+use std::fmt::{Debug, Display};
+
+const ATOL_DEFAULT: f64 = 1e-8;
+const ATOL_DEFAULT_ERR_MSG: &str = "Failed to create atol from default value";
+const RTOL_DEFAULT_ERR_MSG: &str = "Failed to create rtol from epsilon";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NanComparison {
     #[default]
@@ -7,10 +14,9 @@ pub enum NanComparison {
 
 impl From<bool> for NanComparison {
     fn from(value: bool) -> Self {
-        if value {
-            NanComparison::Equal
-        } else {
-            NanComparison::NotEqual
+        match value {
+            true => NanComparison::Equal,
+            false => NanComparison::NotEqual,
         }
     }
 }
@@ -22,51 +28,73 @@ impl From<NanComparison> for bool {
 }
 
 #[derive(Debug)]
-pub enum TolsError {
-    NegativeAtol,
-    NegativeRtol,
+pub enum TolsError<F>
+where
+    F: Float + Display + Debug,
+{
+    NegativeAtol(F),
+    NegativeRtol(F),
 }
 
-impl std::fmt::Display for TolsError {
+impl<F> Display for TolsError<F>
+where
+    F: Float + Display + Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            TolsError::NegativeAtol => write!(f, "atol must be non-negative"),
-            TolsError::NegativeRtol => write!(f, "rtol must be non-negative"),
+            TolsError::NegativeAtol(value) => {
+                write!(f, "atol must be non-negative, got {}", value)
+            }
+            TolsError::NegativeRtol(value) => {
+                write!(f, "rtol must be non-negative, got {}", value)
+            }
         }
     }
 }
 
-impl std::error::Error for TolsError {}
+impl<F> std::error::Error for TolsError<F> where F: Float + Display + Debug {}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Tols {
-    pub atol: f64,
-    pub rtol: f64,
+pub struct Tols<F>
+where
+    F: Float + Display + Debug,
+{
+    pub atol: F,
+    pub rtol: F,
 }
 
-impl Tols {
-    pub fn new(atol: f64, rtol: f64) -> Result<Self, TolsError> {
-        if atol < 0.0 {
-            Err(TolsError::NegativeAtol)
-        } else if rtol < 0.0 {
-            Err(TolsError::NegativeRtol)
+impl<F> Tols<F>
+where
+    F: Float + Display + Debug,
+{
+    pub fn new(atol: F, rtol: F) -> Result<Self, TolsError<F>> {
+        if atol.is_sign_negative() {
+            Err(TolsError::NegativeAtol(atol))
+        } else if rtol.is_sign_negative() {
+            Err(TolsError::NegativeRtol(rtol))
         } else {
             Ok(Tols { atol, rtol })
         }
     }
 }
 
-impl Default for Tols {
+impl<F> Default for Tols<F>
+where
+    F: Float + Display + Debug,
+{
     fn default() -> Self {
         Self {
-            atol: 1e-8,
-            rtol: (f64::EPSILON).sqrt(),
+            atol: F::from(ATOL_DEFAULT).expect(ATOL_DEFAULT_ERR_MSG),
+            rtol: F::from(F::epsilon()).expect(RTOL_DEFAULT_ERR_MSG).sqrt(),
         }
     }
 }
 
 #[inline]
-pub fn isapprox(x: f64, y: f64, tols: Tols, nan_cmp: NanComparison) -> bool {
+pub fn isapprox<F>(x: F, y: F, tols: Tols<F>, nan_cmp: NanComparison) -> bool
+where
+    F: Float + Display + Debug,
+{
     if x.is_nan() && y.is_nan() {
         return nan_cmp.into();
     }
